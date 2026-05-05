@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Rocket Game</title>
+<title>Crash Game</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
 <style>
@@ -34,39 +34,51 @@ body{
   height:38px;
   border-radius:50%;
   overflow:hidden;
-  background:#22c55e;
 }
+
 .profile img{
   width:100%;
   height:100%;
 }
 
-/* GAME AREA */
-.game{
-  text-align:center;
-  margin-top:20px;
-  position:relative;
-  height:300px;
+/* TIMER */
+.timer{
+  position:absolute;
+  top:40%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  font-size:40px;
+  color:#22c55e;
+  display:none;
 }
 
+/* GAME AREA */
+.game{
+  height:350px;
+  position:relative;
+  text-align:center;
+}
+
+/* ROCKET */
 #rocket{
-  font-size:40px;
+  font-size:45px;
   position:absolute;
   left:50%;
   transform:translateX(-50%);
   bottom:0;
 }
 
+/* MULT */
 #mult{
-  font-size:30px;
-  color:#22c55e;
+  font-size:26px;
   margin-top:10px;
+  color:#22c55e;
 }
 
 /* BET */
-.betbox{
-  margin-top:20px;
+.bet{
   text-align:center;
+  margin-top:10px;
 }
 
 input{
@@ -78,25 +90,14 @@ input{
   border:none;
 }
 
-/* BUTTONS */
-button{
-  margin:5px;
-  padding:10px 15px;
-  border:none;
-  border-radius:10px;
-  background:#334155;
-  color:white;
-}
-
-/* HISTORY */
+/* HISTORY UNDER ROCKET */
 .history{
-  position:fixed;
+  position:absolute;
   bottom:0;
   width:100%;
-  background:#111827;
-  padding:10px;
   display:flex;
-  gap:10px;
+  gap:8px;
+  padding:8px;
   overflow-x:auto;
 }
 
@@ -115,18 +116,26 @@ button{
 <div class="topbar">
   <div class="balance">⭐ <span id="bal">1000</span></div>
   <div class="profile">
-    <img id="ava" src="https://i.pravatar.cc/100">
+    <img src="https://i.pravatar.cc/100">
   </div>
 </div>
 
+<!-- TIMER -->
+<div class="timer" id="timer">5</div>
+
 <!-- GAME -->
 <div class="game">
+
   <div id="mult">1.00x</div>
   <div id="rocket">🚀</div>
+
+  <!-- HISTORY UNDER ROCKET -->
+  <div class="history" id="history"></div>
+
 </div>
 
 <!-- BET -->
-<div class="betbox">
+<div class="bet">
   <div>Ставка (min 10)</div>
 
   <input id="bet" type="number" value="10" min="10">
@@ -140,31 +149,15 @@ button{
   <br>
 
   <button onclick="placeBet()">Поставить</button>
-
-  <p id="timer">Следующий раунд: 5</p>
 </div>
 
-<!-- HISTORY -->
-<div class="history" id="history"></div>
-
 <script>
-let tg = window.Telegram.WebApp;
-tg.expand();
-
 let balance = 1000;
 let mult = 1;
-let rocket = document.getElementById("rocket");
-let history = [];
-
-let roundTime = 5;
-let flying = false;
 let crashAt = 0;
+let flying = false;
 let interval;
-
-// avatar
-if(tg.initDataUnsafe?.user?.photo_url){
-  document.getElementById("ava").src = tg.initDataUnsafe.user.photo_url;
-}
+let history = [];
 
 function update(){
   document.getElementById("bal").innerText = balance;
@@ -179,36 +172,34 @@ function maxBet(){
   document.getElementById("bet").value = balance;
 }
 
-function startTimer(){
+function showTimer(){
   let t = 5;
+  let timer = document.getElementById("timer");
+  timer.style.display = "block";
 
-  let timer = setInterval(()=>{
-    document.getElementById("timer").innerText = "Следующий раунд: " + t;
+  let int = setInterval(()=>{
+    timer.innerText = t;
     t--;
 
     if(t < 0){
-      clearInterval(timer);
+      clearInterval(int);
+      timer.style.display = "none";
       startRound();
-      startTimer();
     }
   },1000);
 }
 
 function startRound(){
-  if(flying) return;
-
   flying = true;
   mult = 1;
   crashAt = (Math.random()*3 + 1.5);
 
-  rocket.style.bottom = "0px";
-
   interval = setInterval(()=>{
     mult += 0.05;
 
-    document.getElementById("mult").innerText = mult.toFixed(2) + "x";
+    document.getElementById("mult").innerText = mult.toFixed(2)+"x";
 
-    rocket.style.bottom = (mult*20) + "px";
+    document.getElementById("rocket").style.bottom = (mult*20)+"px";
 
     if(mult >= crashAt){
       endRound();
@@ -221,12 +212,15 @@ function endRound(){
   flying = false;
 
   history.unshift(crashAt.toFixed(2)+"x");
-
   if(history.length > 10) history.pop();
 
   renderHistory();
 
-  document.getElementById("mult").innerText = "💥 " + crashAt.toFixed(2);
+  document.getElementById("mult").innerText = "💥 "+crashAt.toFixed(2);
+
+  setTimeout(()=>{
+    showTimer();
+  },1000);
 }
 
 function renderHistory(){
@@ -234,31 +228,24 @@ function renderHistory(){
   h.innerHTML = "";
 
   history.forEach(x=>{
-    let div = document.createElement("div");
-    div.className = "item";
-    div.innerText = x;
-    h.appendChild(div);
+    let d = document.createElement("div");
+    d.className = "item";
+    d.innerText = x;
+    h.appendChild(d);
   });
 }
 
 function placeBet(){
   let bet = Number(document.getElementById("bet").value);
 
-  if(bet < 10){
-    alert("min 10");
-    return;
-  }
-
-  if(bet > balance){
-    alert("no money");
-    return;
-  }
+  if(bet < 10) return alert("min 10");
+  if(bet > balance) return alert("no money");
 
   balance -= bet;
   update();
 }
 
-startTimer();
+showTimer();
 update();
 </script>
 
