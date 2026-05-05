@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Mini Game</title>
+<title>Crash Game</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
 <style>
@@ -18,32 +18,40 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px;
+  padding: 14px;
+  background: #111827;
+}
+
+/* LEFT TITLE */
+.title {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* RIGHT SIDE */
+.right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 /* BALANCE */
 .balance {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: #111827;
-  padding: 8px 12px;
-  border-radius: 12px;
-  font-size: 16px;
+  gap: 6px;
+  background: #1f2937;
+  padding: 6px 10px;
+  border-radius: 10px;
 }
 
 /* PROFILE */
 .profile {
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: #22c55e;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  cursor: pointer;
   overflow: hidden;
+  background: #22c55e;
 }
 
 .profile img {
@@ -52,21 +60,31 @@ body {
   object-fit: cover;
 }
 
-/* MAIN */
+/* CENTER */
 .center {
   text-align: center;
-  margin-top: 80px;
+  margin-top: 60px;
 }
 
+#m {
+  font-size: 50px;
+  color: #22c55e;
+  margin-bottom: 20px;
+}
+
+/* BUTTON */
 button {
-  padding: 12px 20px;
-  margin: 8px;
+  padding: 12px 22px;
+  font-size: 16px;
   border: none;
   border-radius: 10px;
   background: #3b82f6;
   color: white;
-  font-size: 16px;
   cursor: pointer;
+}
+
+button:hover {
+  background: #2563eb;
 }
 </style>
 </head>
@@ -76,24 +94,31 @@ button {
 <!-- TOP BAR -->
 <div class="topbar">
 
-  <!-- BALANCE -->
-  <div class="balance">
-    ⭐ <span id="balance">1000</span>
-  </div>
+  <div class="title">🎮 CRASH GAME</div>
 
-  <!-- PROFILE -->
-  <div class="profile" onclick="openProfile()">
-    <img id="avatar" src="https://i.pravatar.cc/100" />
+  <div class="right">
+
+    <div class="balance">
+      ⭐ <span id="balance">1000</span>
+    </div>
+
+    <div class="profile">
+      <img id="avatar" src="https://i.pravatar.cc/100">
+    </div>
+
   </div>
 
 </div>
 
 <!-- MAIN -->
 <div class="center">
-  <h1>🎮 Mini Game</h1>
 
-  <button onclick="addCoins()">+10 ⭐</button>
-  <button onclick="removeCoins()">-10 ⭐</button>
+  <div id="m">1.00x</div>
+
+  <button onclick="start()">PLAY CRASH</button>
+
+  <p id="status"></p>
+
 </div>
 
 <script>
@@ -101,8 +126,12 @@ let tg = window.Telegram.WebApp;
 tg.expand();
 
 let balance = 1000;
+let m = 1;
+let run = false;
+let crashAt;
+let interval;
 
-// профиль Telegram (если доступен)
+// avatar from Telegram
 if (tg.initDataUnsafe?.user?.photo_url) {
   document.getElementById("avatar").src = tg.initDataUnsafe.user.photo_url;
 }
@@ -111,18 +140,26 @@ function update() {
   document.getElementById("balance").innerText = balance;
 }
 
-function addCoins() {
-  balance += 10;
-  update();
-}
+function start() {
+  if (run) return;
 
-function removeCoins() {
-  balance -= 10;
-  update();
-}
+  run = true;
+  m = 1;
+  crashAt = (Math.random() * 3 + 1.2);
 
-function openProfile() {
-  alert("Профиль игрока 🎮");
+  document.getElementById("status").innerText = "Game started";
+
+  interval = setInterval(() => {
+    m += 0.05;
+    document.getElementById("m").innerText = m.toFixed(2) + "x";
+
+    if (m >= crashAt) {
+      clearInterval(interval);
+      run = false;
+      document.getElementById("status").innerText =
+        "💥 CRASH at " + crashAt.toFixed(2);
+    }
+  }, 100);
 }
 </script>
 
