@@ -36,46 +36,79 @@ body{
   overflow:hidden;
 }
 
-.profile img{
-  width:100%;
-  height:100%;
+.profile img{width:100%;height:100%;}
+
+/* MENU */
+.menu{
+  display:flex;
+  gap:10px;
+  padding:10px;
+  justify-content:center;
+}
+
+.menu button{
+  padding:8px 12px;
+  border:none;
+  border-radius:10px;
+  background:#1f2937;
+  color:white;
+  cursor:pointer;
 }
 
 /* TIMER */
 .timer{
   position:absolute;
-  top:40%;
+  top:50%;
   left:50%;
   transform:translate(-50%,-50%);
-  font-size:40px;
+  font-size:80px;
   color:#22c55e;
   display:none;
 }
 
-/* GAME AREA */
+/* GAME */
 .game{
-  height:350px;
+  height:380px;
   position:relative;
   text-align:center;
+  overflow:hidden;
 }
 
-/* ROCKET */
+#mult{
+  font-size:30px;
+  margin-top:10px;
+  color:#22c55e;
+}
+
 #rocket{
-  font-size:45px;
+  font-size:50px;
   position:absolute;
   left:50%;
   transform:translateX(-50%);
   bottom:0;
 }
 
-/* MULT */
-#mult{
-  font-size:26px;
-  margin-top:10px;
-  color:#22c55e;
+/* BET OVERLAY */
+.betOverlay{
+  position:absolute;
+  bottom:0;
+  width:100%;
+  background:rgba(17,24,39,0.6);
+  padding:6px;
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
 }
 
-/* BET */
+.betItem{
+  background:#1f2937;
+  padding:6px 10px;
+  border-radius:10px;
+  white-space:nowrap;
+  font-size:12px;
+}
+
+/* BET PANEL */
 .bet{
   text-align:center;
   margin-top:10px;
@@ -89,30 +122,11 @@ input{
   border-radius:10px;
   border:none;
 }
-
-/* HISTORY UNDER ROCKET */
-.history{
-  position:absolute;
-  bottom:0;
-  width:100%;
-  display:flex;
-  gap:8px;
-  padding:8px;
-  overflow-x:auto;
-}
-
-.item{
-  background:#1f2937;
-  padding:6px 10px;
-  border-radius:10px;
-  white-space:nowrap;
-}
 </style>
 </head>
 
 <body>
 
-<!-- TOP -->
 <div class="topbar">
   <div class="balance">⭐ <span id="bal">1000</span></div>
   <div class="profile">
@@ -120,21 +134,23 @@ input{
   </div>
 </div>
 
+<!-- MENU -->
+<div class="menu">
+  <button onclick="mode='rocket'">🚀 Rocket</button>
+  <button onclick="mode='classic'">🎮 Classic</button>
+</div>
+
 <!-- TIMER -->
 <div class="timer" id="timer">5</div>
 
-<!-- GAME -->
 <div class="game">
-
   <div id="mult">1.00x</div>
   <div id="rocket">🚀</div>
 
-  <!-- HISTORY UNDER ROCKET -->
-  <div class="history" id="history"></div>
-
+  <!-- BET OVERLAY -->
+  <div class="betOverlay" id="betOverlay"></div>
 </div>
 
-<!-- BET -->
 <div class="bet">
   <div>Ставка (min 10)</div>
 
@@ -157,7 +173,9 @@ let mult = 1;
 let crashAt = 0;
 let flying = false;
 let interval;
-let history = [];
+let speed = 0.01;
+let bets = [];
+let mode = "rocket";
 
 function update(){
   document.getElementById("bal").innerText = balance;
@@ -172,6 +190,27 @@ function maxBet(){
   document.getElementById("bet").value = balance;
 }
 
+/* BETS */
+function placeBet(){
+  let bet = Number(document.getElementById("bet").value);
+
+  if(bet < 10) return alert("min 10");
+  if(bet > balance) return alert("no money");
+
+  balance -= bet;
+
+  bets.push({
+    amount: bet,
+    startMult: mult,
+    cashout: null,
+    profit: 0
+  });
+
+  update();
+  renderBets();
+}
+
+/* TIMER */
 function showTimer(){
   let t = 5;
   let timer = document.getElementById("timer");
@@ -189,17 +228,21 @@ function showTimer(){
   },1000);
 }
 
+/* ROUND */
 function startRound(){
   flying = true;
   mult = 1;
+  speed = 0.01;
   crashAt = (Math.random()*3 + 1.5);
 
   interval = setInterval(()=>{
-    mult += 0.05;
+    speed += 0.01;        // разгон
+    mult += speed;        // плавный рост
 
     document.getElementById("mult").innerText = mult.toFixed(2)+"x";
+    document.getElementById("rocket").style.bottom = (mult*18)+"px";
 
-    document.getElementById("rocket").style.bottom = (mult*20)+"px";
+    updateBets();
 
     if(mult >= crashAt){
       endRound();
@@ -207,46 +250,40 @@ function startRound(){
   },100);
 }
 
+/* BET UPDATE (растёт от икса) */
+function updateBets(){
+  bets.forEach(b=>{
+    b.profit = (b.amount * mult / b.startMult) - b.amount;
+  });
+  renderBets();
+}
+
+function renderBets(){
+  let el = document.getElementById("betOverlay");
+  el.innerHTML = "";
+
+  bets.slice(-6).forEach(b=>{
+    let d = document.createElement("div");
+    d.className = "betItem";
+    d.innerText = `💰 ${b.amount}$ | +${b.profit.toFixed(1)}$ | x${mult.toFixed(2)}`;
+    el.appendChild(d);
+  });
+}
+
+/* END */
 function endRound(){
   clearInterval(interval);
   flying = false;
-
-  history.unshift(crashAt.toFixed(2)+"x");
-  if(history.length > 10) history.pop();
-
-  renderHistory();
 
   document.getElementById("mult").innerText = "💥 "+crashAt.toFixed(2);
 
   setTimeout(()=>{
     showTimer();
-  },1000);
+  },1500);
 }
 
-function renderHistory(){
-  let h = document.getElementById("history");
-  h.innerHTML = "";
-
-  history.forEach(x=>{
-    let d = document.createElement("div");
-    d.className = "item";
-    d.innerText = x;
-    h.appendChild(d);
-  });
-}
-
-function placeBet(){
-  let bet = Number(document.getElementById("bet").value);
-
-  if(bet < 10) return alert("min 10");
-  if(bet > balance) return alert("no money");
-
-  balance -= bet;
-  update();
-}
-
-showTimer();
 update();
+showTimer();
 </script>
 
 </body>
